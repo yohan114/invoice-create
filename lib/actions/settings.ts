@@ -12,6 +12,10 @@ const settingsSchema = z.object({
   phone: z.string().optional().default(""),
   email: z.string().optional().default(""),
   taxNumber: z.string().optional().default(""),
+  website: z.string().optional().default(""),
+  faxNumber: z.string().optional().default(""),
+  companySubtitle: z.string().optional().default(""),
+  footerDetails: z.string().optional().default(""),
   invoicePrefix: z.string().min(1, "Invoice prefix is required"),
   currency: z.string().min(1, "Currency is required"),
   termsAndConditions: z.string().optional().default(""),
@@ -43,7 +47,7 @@ export async function updateSettings(data: SettingsFormData) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const { companyName, logo, address, phone, email, taxNumber, invoicePrefix, currency, termsAndConditions } = parsed.data;
+  const { companyName, logo, address, phone, email, taxNumber, website, faxNumber, companySubtitle, footerDetails, invoicePrefix, currency, termsAndConditions } = parsed.data;
 
   let settings = await prisma.companySettings.findFirst();
 
@@ -57,6 +61,10 @@ export async function updateSettings(data: SettingsFormData) {
         phone: phone || null,
         email: email || null,
         taxNumber: taxNumber || null,
+        website: website || null,
+        faxNumber: faxNumber || null,
+        companySubtitle: companySubtitle || null,
+        footerDetails: footerDetails || null,
         invoicePrefix,
         currency,
         termsAndConditions: termsAndConditions || null,
@@ -71,6 +79,10 @@ export async function updateSettings(data: SettingsFormData) {
         phone: phone || null,
         email: email || null,
         taxNumber: taxNumber || null,
+        website: website || null,
+        faxNumber: faxNumber || null,
+        companySubtitle: companySubtitle || null,
+        footerDetails: footerDetails || null,
         invoicePrefix,
         currency,
         termsAndConditions: termsAndConditions || null,

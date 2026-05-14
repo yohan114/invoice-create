@@ -58,6 +58,15 @@ interface InvoiceFormProps {
     }[];
     discountPercent: number;
     taxPercent: number;
+    ssclPercent: number;
+    invoiceType: string;
+    poNumber: string;
+    poDate: string;
+    deliveryDate: string;
+    grnNumber: string;
+    paymentTerms: string;
+    referenceNumber: string;
+    deliveryAddress: string;
     notes: string;
     termsAndConditions: string;
   };
@@ -81,6 +90,7 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
     initialData?.invoiceDate || new Date().toISOString().split("T")[0]
   );
   const [dueDate, setDueDate] = useState(initialData?.dueDate || "");
+  const [invoiceType, setInvoiceType] = useState(initialData?.invoiceType || "PROFORMA");
   const [items, setItems] = useState<LineItem[]>(
     initialData?.items.map((item) => ({
       type: item.type,
@@ -92,6 +102,14 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
   );
   const [discountPercent, setDiscountPercent] = useState(initialData?.discountPercent || 0);
   const [taxPercent, setTaxPercent] = useState(initialData?.taxPercent || 0);
+  const [ssclPercent, setSsclPercent] = useState(initialData?.ssclPercent || 0);
+  const [poNumber, setPoNumber] = useState(initialData?.poNumber || "");
+  const [poDate, setPoDate] = useState(initialData?.poDate || "");
+  const [deliveryDate, setDeliveryDate] = useState(initialData?.deliveryDate || "");
+  const [grnNumber, setGrnNumber] = useState(initialData?.grnNumber || "");
+  const [paymentTerms, setPaymentTerms] = useState(initialData?.paymentTerms || "");
+  const [referenceNumber, setReferenceNumber] = useState(initialData?.referenceNumber || "");
+  const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress || "");
   const [notes, setNotes] = useState(initialData?.notes || "");
   const [termsAndConditions, setTermsAndConditions] = useState(
     initialData?.termsAndConditions || defaultTerms
@@ -158,8 +176,9 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
   const subtotal = round2(items.reduce((sum, item) => sum + round2(item.quantity * item.unitPrice), 0));
   const discountAmount = round2(subtotal * discountPercent / 100);
   const taxableAmount = round2(subtotal - discountAmount);
+  const ssclAmount = round2(taxableAmount * ssclPercent / 100);
   const taxAmount = round2(taxableAmount * taxPercent / 100);
-  const grandTotal = round2(taxableAmount + taxAmount);
+  const grandTotal = round2(taxableAmount + ssclAmount + taxAmount);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -171,6 +190,7 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
       jobId,
       invoiceDate,
       dueDate,
+      invoiceType,
       items: items.map((item) => ({
         type: item.type,
         description: item.description,
@@ -180,6 +200,14 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
       })),
       discountPercent: Number(discountPercent),
       taxPercent: Number(taxPercent),
+      ssclPercent: Number(ssclPercent),
+      poNumber,
+      poDate,
+      deliveryDate,
+      grnNumber,
+      paymentTerms,
+      referenceNumber,
+      deliveryAddress,
       notes,
       termsAndConditions,
     };
@@ -241,7 +269,18 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
       </div>
 
       {/* Dates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Invoice Type</label>
+          <select
+            value={invoiceType}
+            onChange={(e) => setInvoiceType(e.target.value)}
+            className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="PROFORMA">Proforma</option>
+            <option value="TAX_INVOICE">Tax Invoice</option>
+          </select>
+        </div>
         <Input
           label="Invoice Date *"
           type="date"
@@ -254,6 +293,60 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
+        />
+      </div>
+
+      {/* Additional Details */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Input
+          label="PO Number"
+          value={poNumber}
+          onChange={(e) => setPoNumber(e.target.value)}
+          placeholder="Purchase order number"
+        />
+        <Input
+          label="PO Date"
+          type="date"
+          value={poDate}
+          onChange={(e) => setPoDate(e.target.value)}
+        />
+        <Input
+          label="Delivery Date"
+          type="date"
+          value={deliveryDate}
+          onChange={(e) => setDeliveryDate(e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Input
+          label="GRN Number"
+          value={grnNumber}
+          onChange={(e) => setGrnNumber(e.target.value)}
+          placeholder="Goods received note number"
+        />
+        <Input
+          label="Payment Terms"
+          value={paymentTerms}
+          onChange={(e) => setPaymentTerms(e.target.value)}
+          placeholder="e.g. Net 30"
+        />
+        <Input
+          label="Reference Number"
+          value={referenceNumber}
+          onChange={(e) => setReferenceNumber(e.target.value)}
+          placeholder="Reference number"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Delivery Address</label>
+        <textarea
+          value={deliveryAddress}
+          onChange={(e) => setDeliveryAddress(e.target.value)}
+          rows={2}
+          placeholder="Delivery address (if different from customer address)"
+          className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
       </div>
 
@@ -400,6 +493,24 @@ export default function InvoiceForm({ initialData, customers, parts, defaultTerm
           <div className="flex justify-between">
             <span className="text-slate-600">Taxable Amount</span>
             <span className="font-medium">Rs. {taxableAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-600">SSCL</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={ssclPercent}
+                onChange={(e) => setSsclPercent(parseFloat(e.target.value) || 0)}
+                className="w-16 rounded border border-slate-300 px-2 py-1 text-sm text-right focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
+              <span className="text-slate-500">%</span>
+            </div>
+            <span className="font-medium">
+              Rs. {ssclAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ const jobSchema = z.object({
   itemDescription: z.string().min(1, "Item/equipment description is required"),
   problemDescription: z.string().min(1, "Problem description is required"),
   technicianId: z.string().optional().default(""),
+  equipmentId: z.string().optional().default(""),
   date: z.string().optional(),
   notes: z.string().optional().default(""),
 });
@@ -141,6 +142,7 @@ export async function createJob(data: JobFormData) {
       itemDescription: parsed.data.itemDescription,
       problemDescription: parsed.data.problemDescription,
       technicianId: parsed.data.technicianId || null,
+      equipmentId: parsed.data.equipmentId || null,
       status: "PENDING",
       notes: parsed.data.notes || null,
     },
@@ -165,6 +167,7 @@ export async function updateJob(id: string, data: JobFormData) {
       itemDescription: parsed.data.itemDescription,
       problemDescription: parsed.data.problemDescription,
       technicianId: parsed.data.technicianId || null,
+      equipmentId: parsed.data.equipmentId || null,
       notes: parsed.data.notes || null,
       ...(jobDate && { date: jobDate }),
     },

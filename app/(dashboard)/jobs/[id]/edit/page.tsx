@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getJobById, getCustomersForSelect, getTechniciansForSelect } from "@/lib/actions/jobs";
+import { getEquipmentForCustomer } from "@/lib/actions/equipment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import JobForm from "../../JobForm";
 
@@ -19,6 +20,8 @@ export default async function EditJobPage({ params }: PageProps) {
     notFound();
   }
 
+  const initialEquipment = await getEquipmentForCustomer(job.customerId);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">Edit Job - {job.jobNumber}</h1>
@@ -34,11 +37,13 @@ export default async function EditJobPage({ params }: PageProps) {
               itemDescription: job.itemDescription,
               problemDescription: job.problemDescription,
               technicianId: job.technicianId,
+              equipmentId: job.equipmentId,
               date: new Date(job.date).toISOString().split("T")[0],
               notes: job.notes,
             }}
             customers={customers}
             technicians={technicians}
+            initialEquipment={initialEquipment}
           />
         </CardContent>
       </Card>

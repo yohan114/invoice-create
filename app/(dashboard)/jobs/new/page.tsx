@@ -16,7 +16,7 @@ export default async function NewJobPage() {
           <CardTitle>Job Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <JobForm customers={customers} technicians={technicians} />
+          <JobForm customers={customers} technicians={technicians} initialEquipment={[]} />
         </CardContent>
       </Card>
     </div>

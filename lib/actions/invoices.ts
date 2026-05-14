@@ -22,6 +22,15 @@ const invoiceSchema = z.object({
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
   discountPercent: z.number().min(0).max(100).default(0),
   taxPercent: z.number().min(0).max(100).default(0),
+  ssclPercent: z.number().min(0).max(100).default(0),
+  invoiceType: z.string().optional().default("PROFORMA"),
+  poNumber: z.string().optional().default(""),
+  poDate: z.string().optional().default(""),
+  deliveryDate: z.string().optional().default(""),
+  grnNumber: z.string().optional().default(""),
+  paymentTerms: z.string().optional().default(""),
+  referenceNumber: z.string().optional().default(""),
+  deliveryAddress: z.string().optional().default(""),
   notes: z.string().optional().default(""),
   termsAndConditions: z.string().optional().default(""),
 });
@@ -143,7 +152,7 @@ export async function createInvoice(data: InvoiceFormData) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const { customerId, jobId, invoiceDate, dueDate, items, discountPercent, taxPercent, notes, termsAndConditions } = parsed.data;
+  const { customerId, jobId, invoiceDate, dueDate, items, discountPercent, taxPercent, ssclPercent, invoiceType, poNumber, poDate, deliveryDate, grnNumber, paymentTerms, referenceNumber, deliveryAddress, notes, termsAndConditions } = parsed.data;
 
   // Calculate totals
   const itemsWithAmounts = items.map((item) => ({
@@ -154,8 +163,9 @@ export async function createInvoice(data: InvoiceFormData) {
   const subtotal = round2(itemsWithAmounts.reduce((sum, item) => sum + item.amount, 0));
   const discountAmount = round2(subtotal * discountPercent / 100);
   const taxableAmount = round2(subtotal - discountAmount);
+  const ssclAmount = round2(taxableAmount * ssclPercent / 100);
   const taxAmount = round2(taxableAmount * taxPercent / 100);
-  const grandTotal = round2(taxableAmount + taxAmount);
+  const grandTotal = round2(taxableAmount + ssclAmount + taxAmount);
 
   const createInvoiceInTransaction = async (retry = false) => {
     try {
@@ -179,13 +189,23 @@ export async function createInvoice(data: InvoiceFormData) {
             dueDate: dueDate ? new Date(dueDate) : null,
             customerId,
             jobId: jobId || null,
+            invoiceType: invoiceType || "PROFORMA",
             subtotal,
             discountPercent,
             discountAmount,
             taxPercent,
             taxAmount,
+            ssclPercent,
+            ssclAmount,
             grandTotal,
             status: "DRAFT",
+            poNumber: poNumber || null,
+            poDate: poDate ? new Date(poDate) : null,
+            deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+            grnNumber: grnNumber || null,
+            paymentTerms: paymentTerms || null,
+            referenceNumber: referenceNumber || null,
+            deliveryAddress: deliveryAddress || null,
             notes: notes || null,
             termsAndConditions: termsAndConditions || null,
             items: {
@@ -228,7 +248,7 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const { customerId, jobId, invoiceDate, dueDate, items, discountPercent, taxPercent, notes, termsAndConditions } = parsed.data;
+  const { customerId, jobId, invoiceDate, dueDate, items, discountPercent, taxPercent, ssclPercent, invoiceType, poNumber, poDate, deliveryDate, grnNumber, paymentTerms, referenceNumber, deliveryAddress, notes, termsAndConditions } = parsed.data;
 
   // Calculate totals
   const itemsWithAmounts = items.map((item) => ({
@@ -239,8 +259,9 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
   const subtotal = round2(itemsWithAmounts.reduce((sum, item) => sum + item.amount, 0));
   const discountAmount = round2(subtotal * discountPercent / 100);
   const taxableAmount = round2(subtotal - discountAmount);
+  const ssclAmount = round2(taxableAmount * ssclPercent / 100);
   const taxAmount = round2(taxableAmount * taxPercent / 100);
-  const grandTotal = round2(taxableAmount + taxAmount);
+  const grandTotal = round2(taxableAmount + ssclAmount + taxAmount);
 
   const invoice = await prisma.$transaction(async (tx) => {
     // Get existing items to restore stock
@@ -278,12 +299,22 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
         dueDate: dueDate ? new Date(dueDate) : null,
         customerId,
         jobId: jobId || null,
+        invoiceType: invoiceType || "PROFORMA",
         subtotal,
         discountPercent,
         discountAmount,
         taxPercent,
         taxAmount,
+        ssclPercent,
+        ssclAmount,
         grandTotal,
+        poNumber: poNumber || null,
+        poDate: poDate ? new Date(poDate) : null,
+        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        grnNumber: grnNumber || null,
+        paymentTerms: paymentTerms || null,
+        referenceNumber: referenceNumber || null,
+        deliveryAddress: deliveryAddress || null,
         notes: notes || null,
         termsAndConditions: termsAndConditions || null,
         items: {
@@ -366,4 +397,27 @@ export async function getPartsForSelect() {
 export async function getCompanySettings() {
   const settings = await prisma.companySettings.findFirst();
   return settings;
+}
+
+export async function convertToTaxInvoice(id: string) {
+  const invoice = await prisma.invoice.findUnique({ where: { id } });
+  if (!invoice) {
+    return { success: false as const, error: "Invoice not found" };
+  }
+
+  if (invoice.invoiceType !== "PROFORMA") {
+    return { success: false as const, error: "Only proforma invoices can be converted" };
+  }
+
+  const updatedInvoice = await prisma.invoice.update({
+    where: { id },
+    data: {
+      invoiceType: "TAX_INVOICE",
+      invoiceNumber: `TAX-${invoice.invoiceNumber}`,
+    },
+  });
+
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${id}`);
+  return { success: true as const, invoice: updatedInvoice };
 }

@@ -11,6 +11,7 @@ import {
   CreditCard,
   BarChart3,
   Settings,
+  Cog,
   X,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "TECHNICIAN", "CASHIER"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["ADMIN", "MANAGER"] },
   { href: "/jobs", label: "Jobs", icon: Wrench, roles: ["ADMIN", "MANAGER", "TECHNICIAN"] },
+  { href: "/equipment", label: "Equipment", icon: Cog, roles: ["ADMIN", "MANAGER", "TECHNICIAN"] },
   { href: "/invoices", label: "Invoices", icon: FileText, roles: ["ADMIN", "MANAGER", "CASHIER"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["ADMIN", "MANAGER"] },
   { href: "/payments", label: "Payments", icon: CreditCard, roles: ["ADMIN", "MANAGER", "CASHIER"] },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,12 +9,14 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { createJob, updateJob } from "@/lib/actions/jobs";
+import { getEquipmentForCustomer } from "@/lib/actions/equipment";
 
 const jobFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
   itemDescription: z.string().min(1, "Item/equipment description is required"),
   problemDescription: z.string().min(1, "Problem description is required"),
   technicianId: z.string(),
+  equipmentId: z.string(),
   date: z.string(),
   notes: z.string(),
 });
@@ -23,9 +26,17 @@ type JobFormValues = {
   itemDescription: string;
   problemDescription: string;
   technicianId: string;
+  equipmentId: string;
   date: string;
   notes: string;
 };
+
+interface EquipmentOption {
+  id: string;
+  name: string;
+  modelNumber: string | null;
+  serialNumber: string | null;
+}
 
 interface JobFormProps {
   initialData?: {
@@ -34,22 +45,27 @@ interface JobFormProps {
     itemDescription: string;
     problemDescription: string;
     technicianId: string | null;
+    equipmentId: string | null;
     date: string;
     notes: string | null;
   };
   customers: { id: string; name: string }[];
   technicians: { id: string; name: string }[];
+  initialEquipment?: EquipmentOption[];
 }
 
-export default function JobForm({ initialData, customers, technicians }: JobFormProps) {
+export default function JobForm({ initialData, customers, technicians, initialEquipment }: JobFormProps) {
   const router = useRouter();
   const isEditing = !!initialData;
+  const [equipmentList, setEquipmentList] = useState<EquipmentOption[]>(initialEquipment || []);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    setValue,
+    watch,
   } = useForm<JobFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(jobFormSchema) as any,
@@ -58,10 +74,23 @@ export default function JobForm({ initialData, customers, technicians }: JobForm
       itemDescription: initialData?.itemDescription || "",
       problemDescription: initialData?.problemDescription || "",
       technicianId: initialData?.technicianId || "",
+      equipmentId: initialData?.equipmentId || "",
       date: initialData?.date || new Date().toISOString().split("T")[0],
       notes: initialData?.notes || "",
     },
   });
+
+  const watchedCustomerId = watch("customerId");
+
+  const loadEquipment = useCallback(async (custId: string) => {
+    if (custId) {
+      const equipment = await getEquipmentForCustomer(custId);
+      setEquipmentList(equipment);
+    } else {
+      setEquipmentList([]);
+      setValue("equipmentId", "");
+    }
+  }, [setValue]);
 
   async function onSubmit(data: JobFormValues) {
     const result = isEditing
@@ -86,15 +115,43 @@ export default function JobForm({ initialData, customers, technicians }: JobForm
     { value: "", label: "Unassigned" },
     ...technicians.map((t) => ({ value: t.id, label: t.name })),
   ];
+  const equipmentOptions = [
+    { value: "", label: "None" },
+    ...equipmentList.map((e) => ({
+      value: e.id,
+      label: `${e.name}${e.modelNumber ? ` (${e.modelNumber})` : ""}`,
+    })),
+  ];
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Customer *</label>
+        <select
+          {...register("customerId")}
+          onChange={(e) => {
+            setValue("customerId", e.target.value);
+            setValue("equipmentId", "");
+            loadEquipment(e.target.value);
+          }}
+          className={`block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none ${errors.customerId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
+        >
+          <option value="">Select a customer</option>
+          {customerOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {errors.customerId && (
+          <p className="mt-1 text-sm text-red-600">{errors.customerId.message}</p>
+        )}
+      </div>
+
       <Select
-        label="Customer *"
-        {...register("customerId")}
-        error={errors.customerId?.message}
-        options={customerOptions}
-        placeholder="Select a customer"
+        label="Equipment (optional)"
+        {...register("equipmentId")}
+        error={errors.equipmentId?.message}
+        options={equipmentOptions}
+        disabled={!watchedCustomerId || equipmentList.length === 0}
       />
 
       <div className="w-full">

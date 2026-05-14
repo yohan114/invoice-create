@@ -13,6 +13,10 @@ interface SettingsFormProps {
     phone: string | null;
     email: string | null;
     taxNumber: string | null;
+    website: string | null;
+    faxNumber: string | null;
+    companySubtitle: string | null;
+    footerDetails: string | null;
     invoicePrefix: string;
     currency: string;
     termsAndConditions: string | null;
@@ -30,6 +34,10 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
   const [phone, setPhone] = useState(settings.phone || "");
   const [email, setEmail] = useState(settings.email || "");
   const [taxNumber, setTaxNumber] = useState(settings.taxNumber || "");
+  const [website, setWebsite] = useState(settings.website || "");
+  const [faxNumber, setFaxNumber] = useState(settings.faxNumber || "");
+  const [companySubtitle, setCompanySubtitle] = useState(settings.companySubtitle || "");
+  const [footerDetails, setFooterDetails] = useState(settings.footerDetails || "");
   const [invoicePrefix, setInvoicePrefix] = useState(settings.invoicePrefix);
   const [currency, setCurrency] = useState(settings.currency);
   const [termsAndConditions, setTermsAndConditions] = useState(settings.termsAndConditions || "");
@@ -58,6 +66,10 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
       phone,
       email,
       taxNumber,
+      website,
+      faxNumber,
+      companySubtitle,
+      footerDetails,
       invoicePrefix,
       currency,
       termsAndConditions,
@@ -150,6 +162,40 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+              <input
+                type="text"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://example.com"
+                className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Fax Number</label>
+              <input
+                type="text"
+                value={faxNumber}
+                onChange={(e) => setFaxNumber(e.target.value)}
+                className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Company Subtitle</label>
+            <input
+              type="text"
+              value={companySubtitle}
+              onChange={(e) => setCompanySubtitle(e.target.value)}
+              placeholder="Tagline or subtitle for the company"
+              className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Tax/VAT Number</label>
@@ -192,6 +238,17 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
                 <p className="mt-1 text-sm text-red-600">{errors.currency[0]}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Footer Details</label>
+            <textarea
+              value={footerDetails}
+              onChange={(e) => setFooterDetails(e.target.value)}
+              rows={3}
+              placeholder="Footer details for invoices..."
+              className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
           </div>
 
           <div>
