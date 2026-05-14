@@ -10,15 +10,25 @@ interface PrintPageClientProps {
     invoiceNumber: string;
     invoiceDate: string;
     dueDate: string | null;
+    invoiceType: string;
     status: string;
     subtotal: number;
     discountPercent: number;
     discountAmount: number;
+    ssclPercent: number;
+    ssclAmount: number;
     taxPercent: number;
     taxAmount: number;
     grandTotal: number;
     notes: string | null;
     termsAndConditions: string | null;
+    poNumber: string | null;
+    poDate: string | null;
+    deliveryDate: string | null;
+    grnNumber: string | null;
+    paymentTerms: string | null;
+    referenceNumber: string | null;
+    deliveryAddress: string | null;
     customer: {
       name: string;
       address: string | null;
@@ -44,11 +54,15 @@ interface PrintPageClientProps {
   };
   company: {
     companyName: string;
+    companySubtitle: string | null;
     logo: string | null;
     address: string | null;
     phone: string | null;
     email: string | null;
     taxNumber: string | null;
+    website: string | null;
+    faxNumber: string | null;
+    footerDetails: string | null;
   } | null;
 }
 

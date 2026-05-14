@@ -26,11 +26,15 @@ export default async function InvoicePrintPage({ params }: PageProps) {
   const company = settings
     ? {
         companyName: settings.companyName,
+        companySubtitle: settings.companySubtitle ?? null,
         logo: settings.logo,
         address: settings.address,
         phone: settings.phone,
         email: settings.email,
         taxNumber: settings.taxNumber,
+        website: settings.website ?? null,
+        faxNumber: settings.faxNumber ?? null,
+        footerDetails: settings.footerDetails ?? null,
       }
     : null;
 
@@ -38,15 +42,25 @@ export default async function InvoicePrintPage({ params }: PageProps) {
     invoiceNumber: invoice.invoiceNumber,
     invoiceDate: invoice.invoiceDate.toISOString(),
     dueDate: invoice.dueDate ? invoice.dueDate.toISOString() : null,
+    invoiceType: invoice.invoiceType,
     status: invoice.status,
     subtotal: invoice.subtotal,
     discountPercent: invoice.discountPercent,
     discountAmount: invoice.discountAmount,
+    ssclPercent: invoice.ssclPercent,
+    ssclAmount: invoice.ssclAmount,
     taxPercent: invoice.taxPercent,
     taxAmount: invoice.taxAmount,
     grandTotal: invoice.grandTotal,
     notes: invoice.notes,
     termsAndConditions: invoice.termsAndConditions,
+    poNumber: invoice.poNumber ?? null,
+    poDate: invoice.poDate ? invoice.poDate.toISOString() : null,
+    deliveryDate: invoice.deliveryDate ? invoice.deliveryDate.toISOString() : null,
+    grnNumber: invoice.grnNumber ?? null,
+    paymentTerms: invoice.paymentTerms ?? null,
+    referenceNumber: invoice.referenceNumber ?? null,
+    deliveryAddress: invoice.deliveryAddress ?? null,
     customer: {
       name: invoice.customer.name,
       address: invoice.customer.address,
