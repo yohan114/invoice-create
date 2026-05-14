@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Role: ADMIN, MANAGER, TECHNICIAN, CASHIER
+// JobStatus: PENDING, IN_PROGRESS, COMPLETED, DELIVERED, CANCELLED
+// InvoiceStatus: DRAFT, SENT, PAID, PARTIALLY_PAID, OVERDUE, CANCELLED
+// InvoiceItemType: PART, LABOUR, SERVICE, TECHNICAL_CHARGE, TRANSPORT, SUNDRY
+// PaymentMethod: CASH, CARD, BANK_TRANSFER, CHEQUE, ONLINE
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("TECHNICIAN")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedJobs Job[] @relation("TechnicianJobs")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  taxNumber String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs     Job[]
+  invoices Invoice[]
+}
+
+model Job {
+  id                 String    @id @default(uuid())
+  jobNumber          String    @unique
+  date               DateTime
+  customerId         String
+  itemDescription    String
+  problemDescription String
+  technicianId       String?
+  status             String    @default("PENDING")
+  completionDate     DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  technician User?     @relation("TechnicianJobs", fields: [technicianId], references: [id], onDelete: SetNull)
+  invoices   Invoice[]
+}
+
+model Part {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  quantity     Int
+  unitPrice    Float
+  costPrice    Float
+  supplier     String?
+  reorderLevel Int      @default(5)
+  unit         String   @default("pcs")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  invoiceItems InvoiceItem[]
+}
+
+model Invoice {
+  id                 String    @id @default(uuid())
+  invoiceNumber      String    @unique
+  invoiceDate        DateTime
+  dueDate            DateTime?
+  customerId         String
+  jobId              String?
+  subtotal           Float
+  discountPercent    Float     @default(0)
+  discountAmount     Float     @default(0)
+  taxPercent         Float     @default(0)
+  taxAmount          Float     @default(0)
+  grandTotal         Float
+  status             String    @default("DRAFT")
+  notes              String?
+  termsAndConditions String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customer Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  job      Job?          @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  items    InvoiceItem[]
+  payments Payment[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  type        String
+  description String
+  quantity    Float
+  unitPrice   Float
+  amount      Float
+  partId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  part    Part?   @relation(fields: [partId], references: [id], onDelete: SetNull)
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  amount      Float
+  paymentDate DateTime
+  method      String
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model CompanySettings {
+  id                 String   @id @default(uuid())
+  companyName        String
+  logo               String?
+  address            String?
+  phone              String?
+  email              String?
+  taxNumber          String?
+  invoicePrefix      String   @default("INV")
+  currency           String   @default("Rs.")
+  termsAndConditions String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
