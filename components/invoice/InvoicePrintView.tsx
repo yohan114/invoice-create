@@ -312,16 +312,6 @@ export default function InvoicePrintView({
       <div className="flex justify-end mb-6">
         <table className="border border-slate-400 text-xs w-64">
           <tbody>
-            {invoice.ssclPercent > 0 && (
-              <tr>
-                <td className="border border-slate-400 px-3 py-1 font-medium">
-                  SSCL {invoice.ssclPercent}%
-                </td>
-                <td className="border border-slate-400 px-3 py-1 text-right">
-                  {formatCurrency(invoice.ssclAmount)}
-                </td>
-              </tr>
-            )}
             <tr>
               <td className="border border-slate-400 px-3 py-1 font-medium">
                 Sub Total
@@ -337,6 +327,16 @@ export default function InvoicePrintView({
                 </td>
                 <td className="border border-slate-400 px-3 py-1 text-right text-red-600">
                   - {formatCurrency(invoice.discountAmount)}
+                </td>
+              </tr>
+            )}
+            {invoice.ssclPercent > 0 && (
+              <tr>
+                <td className="border border-slate-400 px-3 py-1 font-medium">
+                  SSCL {invoice.ssclPercent}%
+                </td>
+                <td className="border border-slate-400 px-3 py-1 text-right">
+                  {formatCurrency(invoice.ssclAmount)}
                 </td>
               </tr>
             )}

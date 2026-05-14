@@ -3,6 +3,7 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-utils";
 
 const equipmentSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
@@ -74,6 +75,8 @@ export async function getEquipmentById(id: string) {
 }
 
 export async function createEquipment(data: EquipmentFormData) {
+  await requireRole(["ADMIN", "MANAGER"]);
+
   const parsed = equipmentSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
@@ -97,6 +100,8 @@ export async function createEquipment(data: EquipmentFormData) {
 }
 
 export async function updateEquipment(id: string, data: EquipmentFormData) {
+  await requireRole(["ADMIN", "MANAGER"]);
+
   const parsed = equipmentSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
@@ -122,6 +127,17 @@ export async function updateEquipment(id: string, data: EquipmentFormData) {
 }
 
 export async function deleteEquipment(id: string) {
+  await requireRole(["ADMIN", "MANAGER"]);
+
+  // Check if equipment has linked jobs
+  const jobCount = await prisma.job.count({ where: { equipmentId: id } });
+  if (jobCount > 0) {
+    return {
+      success: false as const,
+      error: "Cannot delete equipment with linked jobs. Unlink jobs first.",
+    };
+  }
+
   await prisma.equipment.delete({ where: { id } });
   revalidatePath("/equipment");
   return { success: true as const };

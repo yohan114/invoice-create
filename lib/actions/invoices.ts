@@ -399,6 +399,29 @@ export async function getCompanySettings() {
   return settings;
 }
 
+async function generateTaxInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
+  const year = new Date().getFullYear();
+  const fullPrefix = `TAX-${year}-`;
+
+  const lastInvoice = await tx.invoice.findFirst({
+    where: {
+      invoiceNumber: { startsWith: fullPrefix },
+    },
+    orderBy: { invoiceNumber: "desc" },
+  });
+
+  let nextNumber = 1;
+  if (lastInvoice) {
+    const lastNumberStr = lastInvoice.invoiceNumber.replace(fullPrefix, "");
+    const lastNumber = parseInt(lastNumberStr, 10);
+    if (!isNaN(lastNumber)) {
+      nextNumber = lastNumber + 1;
+    }
+  }
+
+  return `${fullPrefix}${nextNumber.toString().padStart(4, "0")}`;
+}
+
 export async function convertToTaxInvoice(id: string) {
   const invoice = await prisma.invoice.findUnique({ where: { id } });
   if (!invoice) {
@@ -409,13 +432,34 @@ export async function convertToTaxInvoice(id: string) {
     return { success: false as const, error: "Only proforma invoices can be converted" };
   }
 
-  const updatedInvoice = await prisma.invoice.update({
-    where: { id },
-    data: {
-      invoiceType: "TAX_INVOICE",
-      invoiceNumber: `TAX-${invoice.invoiceNumber}`,
-    },
-  });
+  const convertInTransaction = async (retry = false) => {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const taxInvoiceNumber = await generateTaxInvoiceNumber(tx);
+
+        const updatedInvoice = await tx.invoice.update({
+          where: { id },
+          data: {
+            invoiceType: "TAX_INVOICE",
+            invoiceNumber: taxInvoiceNumber,
+          },
+        });
+
+        return updatedInvoice;
+      });
+    } catch (error) {
+      if (
+        !retry &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return convertInTransaction(true);
+      }
+      throw error;
+    }
+  };
+
+  const updatedInvoice = await convertInTransaction();
 
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);

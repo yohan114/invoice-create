@@ -416,17 +416,6 @@ export function generateInvoicePDF(invoice: InvoiceData, company: CompanyData | 
 
   let totalsY = y;
 
-  // SSCL row
-  if (invoice.ssclPercent > 0) {
-    doc.rect(totalsBoxX, totalsY, totalsBoxWidth, totalsRowH);
-    doc.line(totalsBoxX + totalsLabelW, totalsY, totalsBoxX + totalsLabelW, totalsY + totalsRowH);
-    doc.setFont("helvetica", "bold");
-    doc.text(`SSCL ${invoice.ssclPercent}%`, totalsBoxX + 3, totalsY + 5);
-    doc.setFont("helvetica", "normal");
-    doc.text(fmtCurrency(invoice.ssclAmount), totalsBoxX + totalsBoxWidth - 3, totalsY + 5, { align: "right" });
-    totalsY += totalsRowH;
-  }
-
   // Sub Total row
   doc.rect(totalsBoxX, totalsY, totalsBoxWidth, totalsRowH);
   doc.line(totalsBoxX + totalsLabelW, totalsY, totalsBoxX + totalsLabelW, totalsY + totalsRowH);
@@ -446,6 +435,17 @@ export function generateInvoicePDF(invoice: InvoiceData, company: CompanyData | 
     doc.setTextColor(200, 0, 0);
     doc.text(`- ${fmtCurrency(invoice.discountAmount)}`, totalsBoxX + totalsBoxWidth - 3, totalsY + 5, { align: "right" });
     doc.setTextColor(0, 0, 0);
+    totalsY += totalsRowH;
+  }
+
+  // SSCL row
+  if (invoice.ssclPercent > 0) {
+    doc.rect(totalsBoxX, totalsY, totalsBoxWidth, totalsRowH);
+    doc.line(totalsBoxX + totalsLabelW, totalsY, totalsBoxX + totalsLabelW, totalsY + totalsRowH);
+    doc.setFont("helvetica", "bold");
+    doc.text(`SSCL ${invoice.ssclPercent}%`, totalsBoxX + 3, totalsY + 5);
+    doc.setFont("helvetica", "normal");
+    doc.text(fmtCurrency(invoice.ssclAmount), totalsBoxX + totalsBoxWidth - 3, totalsY + 5, { align: "right" });
     totalsY += totalsRowH;
   }
 

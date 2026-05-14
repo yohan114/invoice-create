@@ -3,6 +3,7 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 
 const jobSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
@@ -102,11 +103,11 @@ export async function getJobById(id: string) {
   return job;
 }
 
-async function generateJobNumber(): Promise<string> {
+async function generateJobNumber(tx: Prisma.TransactionClient): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `JOB-${year}-`;
 
-  const lastJob = await prisma.job.findFirst({
+  const lastJob = await tx.job.findFirst({
     where: {
       jobNumber: { startsWith: prefix },
     },
@@ -131,22 +132,42 @@ export async function createJob(data: JobFormData) {
     return { success: false, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const jobNumber = await generateJobNumber();
   const jobDate = parsed.data.date ? new Date(parsed.data.date) : new Date();
 
-  const job = await prisma.job.create({
-    data: {
-      jobNumber,
-      date: jobDate,
-      customerId: parsed.data.customerId,
-      itemDescription: parsed.data.itemDescription,
-      problemDescription: parsed.data.problemDescription,
-      technicianId: parsed.data.technicianId || null,
-      equipmentId: parsed.data.equipmentId || null,
-      status: "PENDING",
-      notes: parsed.data.notes || null,
-    },
-  });
+  const createJobInTransaction = async (retry = false) => {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const jobNumber = await generateJobNumber(tx);
+
+        const job = await tx.job.create({
+          data: {
+            jobNumber,
+            date: jobDate,
+            customerId: parsed.data.customerId,
+            itemDescription: parsed.data.itemDescription,
+            problemDescription: parsed.data.problemDescription,
+            technicianId: parsed.data.technicianId || null,
+            equipmentId: parsed.data.equipmentId || null,
+            status: "PENDING",
+            notes: parsed.data.notes || null,
+          },
+        });
+
+        return job;
+      });
+    } catch (error) {
+      if (
+        !retry &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return createJobInTransaction(true);
+      }
+      throw error;
+    }
+  };
+
+  const job = await createJobInTransaction();
 
   revalidatePath("/jobs");
   return { success: true, job };

@@ -16,7 +16,11 @@ export default function DeleteEquipmentButton({ id, name }: DeleteEquipmentButto
     if (!confirm(`Are you sure you want to delete equipment "${name}"? This action cannot be undone.`)) {
       return;
     }
-    await deleteEquipment(id);
+    const result = await deleteEquipment(id);
+    if (!result.success) {
+      alert(result.error);
+      return;
+    }
     router.push("/equipment");
   }
 
