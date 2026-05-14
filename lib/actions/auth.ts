@@ -5,7 +5,16 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 
-const JWT_SECRET = "workshop-secret-key-change-in-production";
+function getJwtSecret(): string {
+  if (process.env.JWT_SECRET) {
+    return process.env.JWT_SECRET;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET environment variable is required in production");
+  }
+  return "workshop-dev-secret-do-not-use-in-production";
+}
+
 const TOKEN_NAME = "token";
 
 export interface AuthUser {
@@ -37,7 +46,7 @@ export async function login(
 
     const token = jwt.sign(
       { id: user.id, name: user.name, email: user.email, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "7d" }
     );
 
@@ -68,7 +77,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
     if (!token) return null;
 
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+    const decoded = jwt.verify(token, getJwtSecret()) as AuthUser;
     return decoded;
   } catch {
     return null;

@@ -17,7 +17,13 @@ export default function DeleteInvoiceButton({ id, invoiceNumber }: DeleteInvoice
 
   async function handleDelete() {
     setDeleting(true);
-    await deleteInvoice(id);
+    const result = await deleteInvoice(id);
+    if (!result.success) {
+      alert(result.error || "Failed to delete invoice");
+      setDeleting(false);
+      setConfirming(false);
+      return;
+    }
     router.push("/invoices");
   }
 

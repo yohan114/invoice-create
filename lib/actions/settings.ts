@@ -3,6 +3,7 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-utils";
 
 const settingsSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -35,6 +36,8 @@ export async function getSettings() {
 }
 
 export async function updateSettings(data: SettingsFormData) {
+  await requireRole(["ADMIN", "MANAGER"]);
+
   const parsed = settingsSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };

@@ -13,10 +13,14 @@ export default function DeleteCustomerButton({ id, name }: DeleteCustomerButtonP
   const router = useRouter();
 
   async function handleDelete() {
-    if (!confirm(`Are you sure you want to delete "${name}"? This will also delete related jobs and invoices.`)) {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
       return;
     }
-    await deleteCustomer(id);
+    const result = await deleteCustomer(id);
+    if (!result.success) {
+      alert(result.error || "Failed to delete customer");
+      return;
+    }
     router.refresh();
   }
 

@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getInvoiceById, getCompanySettings } from "@/lib/actions/invoices";
+import { getCurrentUser } from "@/lib/actions/auth";
 import PrintPageClient from "./PrintPageClient";
 
 interface PageProps {
@@ -7,6 +8,11 @@ interface PageProps {
 }
 
 export default async function InvoicePrintPage({ params }: PageProps) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
   const { id } = await params;
   const [invoice, settings] = await Promise.all([
     getInvoiceById(id),

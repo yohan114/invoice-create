@@ -3,6 +3,7 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-utils";
 
 const paymentSchema = z.object({
   invoiceId: z.string().min(1, "Invoice is required"),
@@ -137,6 +138,7 @@ export async function createPayment(data: PaymentFormData) {
 }
 
 export async function deletePayment(id: string) {
+  await requireRole(["ADMIN", "MANAGER"]);
   const payment = await prisma.payment.findUnique({
     where: { id },
     include: {

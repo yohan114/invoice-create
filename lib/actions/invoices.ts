@@ -3,6 +3,8 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-utils";
+import { Prisma } from "@prisma/client";
 
 const invoiceItemSchema = z.object({
   type: z.string().min(1, "Type is required"),
@@ -30,13 +32,13 @@ function round2(num: number): number {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
-async function generateInvoiceNumber(): Promise<string> {
-  const settings = await prisma.companySettings.findFirst();
+async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
+  const settings = await tx.companySettings.findFirst();
   const prefix = settings?.invoicePrefix || "INV";
   const year = new Date().getFullYear();
   const fullPrefix = `${prefix}-${year}-`;
 
-  const lastInvoice = await prisma.invoice.findFirst({
+  const lastInvoice = await tx.invoice.findFirst({
     where: {
       invoiceNumber: { startsWith: fullPrefix },
     },
@@ -155,46 +157,66 @@ export async function createInvoice(data: InvoiceFormData) {
   const taxAmount = round2(taxableAmount * taxPercent / 100);
   const grandTotal = round2(taxableAmount + taxAmount);
 
-  const invoiceNumber = await generateInvoiceNumber();
+  const createInvoiceInTransaction = async (retry = false) => {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const invoiceNumber = await generateInvoiceNumber(tx);
 
-  // Adjust part stock for PART items
-  for (const item of items) {
-    if (item.type === "PART" && item.partId) {
-      await prisma.part.update({
-        where: { id: item.partId },
-        data: { quantity: { decrement: Math.round(item.quantity) } },
+        // Adjust part stock for PART items
+        for (const item of items) {
+          if (item.type === "PART" && item.partId) {
+            await tx.part.update({
+              where: { id: item.partId },
+              data: { quantity: { decrement: Math.round(item.quantity) } },
+            });
+          }
+        }
+
+        const invoice = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            invoiceDate: new Date(invoiceDate),
+            dueDate: dueDate ? new Date(dueDate) : null,
+            customerId,
+            jobId: jobId || null,
+            subtotal,
+            discountPercent,
+            discountAmount,
+            taxPercent,
+            taxAmount,
+            grandTotal,
+            status: "DRAFT",
+            notes: notes || null,
+            termsAndConditions: termsAndConditions || null,
+            items: {
+              create: itemsWithAmounts.map((item) => ({
+                type: item.type,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                amount: item.amount,
+                partId: item.partId || null,
+              })),
+            },
+          },
+        });
+
+        return invoice;
       });
+    } catch (error) {
+      // Retry once on unique constraint violation (race condition on number generation)
+      if (
+        !retry &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return createInvoiceInTransaction(true);
+      }
+      throw error;
     }
-  }
+  };
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      invoiceNumber,
-      invoiceDate: new Date(invoiceDate),
-      dueDate: dueDate ? new Date(dueDate) : null,
-      customerId,
-      jobId: jobId || null,
-      subtotal,
-      discountPercent,
-      discountAmount,
-      taxPercent,
-      taxAmount,
-      grandTotal,
-      status: "DRAFT",
-      notes: notes || null,
-      termsAndConditions: termsAndConditions || null,
-      items: {
-        create: itemsWithAmounts.map((item) => ({
-          type: item.type,
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          amount: item.amount,
-          partId: item.partId || null,
-        })),
-      },
-    },
-  });
+  const invoice = await createInvoiceInTransaction();
 
   revalidatePath("/invoices");
   return { success: true as const, invoice };
@@ -208,21 +230,6 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
 
   const { customerId, jobId, invoiceDate, dueDate, items, discountPercent, taxPercent, notes, termsAndConditions } = parsed.data;
 
-  // Get existing items to restore stock
-  const existingItems = await prisma.invoiceItem.findMany({
-    where: { invoiceId: id },
-  });
-
-  // Restore stock for existing PART items
-  for (const item of existingItems) {
-    if (item.type === "PART" && item.partId) {
-      await prisma.part.update({
-        where: { id: item.partId },
-        data: { quantity: { increment: Math.round(item.quantity) } },
-      });
-    }
-  }
-
   // Calculate totals
   const itemsWithAmounts = items.map((item) => ({
     ...item,
@@ -235,45 +242,64 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
   const taxAmount = round2(taxableAmount * taxPercent / 100);
   const grandTotal = round2(taxableAmount + taxAmount);
 
-  // Delete old items
-  await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
+  const invoice = await prisma.$transaction(async (tx) => {
+    // Get existing items to restore stock
+    const existingItems = await tx.invoiceItem.findMany({
+      where: { invoiceId: id },
+    });
 
-  // Reduce stock for new PART items
-  for (const item of items) {
-    if (item.type === "PART" && item.partId) {
-      await prisma.part.update({
-        where: { id: item.partId },
-        data: { quantity: { decrement: Math.round(item.quantity) } },
-      });
+    // Restore stock for existing PART items
+    for (const item of existingItems) {
+      if (item.type === "PART" && item.partId) {
+        await tx.part.update({
+          where: { id: item.partId },
+          data: { quantity: { increment: Math.round(item.quantity) } },
+        });
+      }
     }
-  }
 
-  const invoice = await prisma.invoice.update({
-    where: { id },
-    data: {
-      invoiceDate: new Date(invoiceDate),
-      dueDate: dueDate ? new Date(dueDate) : null,
-      customerId,
-      jobId: jobId || null,
-      subtotal,
-      discountPercent,
-      discountAmount,
-      taxPercent,
-      taxAmount,
-      grandTotal,
-      notes: notes || null,
-      termsAndConditions: termsAndConditions || null,
-      items: {
-        create: itemsWithAmounts.map((item) => ({
-          type: item.type,
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          amount: item.amount,
-          partId: item.partId || null,
-        })),
+    // Delete old items
+    await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
+
+    // Reduce stock for new PART items
+    for (const item of items) {
+      if (item.type === "PART" && item.partId) {
+        await tx.part.update({
+          where: { id: item.partId },
+          data: { quantity: { decrement: Math.round(item.quantity) } },
+        });
+      }
+    }
+
+    const updatedInvoice = await tx.invoice.update({
+      where: { id },
+      data: {
+        invoiceDate: new Date(invoiceDate),
+        dueDate: dueDate ? new Date(dueDate) : null,
+        customerId,
+        jobId: jobId || null,
+        subtotal,
+        discountPercent,
+        discountAmount,
+        taxPercent,
+        taxAmount,
+        grandTotal,
+        notes: notes || null,
+        termsAndConditions: termsAndConditions || null,
+        items: {
+          create: itemsWithAmounts.map((item) => ({
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.amount,
+            partId: item.partId || null,
+          })),
+        },
       },
-    },
+    });
+
+    return updatedInvoice;
   });
 
   revalidatePath("/invoices");
@@ -282,6 +308,17 @@ export async function updateInvoice(id: string, data: InvoiceFormData) {
 }
 
 export async function deleteInvoice(id: string) {
+  await requireRole(["ADMIN", "MANAGER"]);
+
+  // Check if invoice has payments
+  const paymentCount = await prisma.payment.count({ where: { invoiceId: id } });
+  if (paymentCount > 0) {
+    return {
+      success: false as const,
+      error: "Cannot delete invoice with existing payments. Delete payments first.",
+    };
+  }
+
   // Restore stock for PART items before deleting
   const existingItems = await prisma.invoiceItem.findMany({
     where: { invoiceId: id },
@@ -298,7 +335,7 @@ export async function deleteInvoice(id: string) {
 
   await prisma.invoice.delete({ where: { id } });
   revalidatePath("/invoices");
-  return { success: true };
+  return { success: true as const };
 }
 
 export async function getCustomersForSelect() {

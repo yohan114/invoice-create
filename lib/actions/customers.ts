@@ -102,6 +102,15 @@ export async function updateCustomer(id: string, data: CustomerFormData) {
 }
 
 export async function deleteCustomer(id: string) {
+  // Check if customer has any invoices
+  const invoiceCount = await prisma.invoice.count({ where: { customerId: id } });
+  if (invoiceCount > 0) {
+    return {
+      success: false,
+      error: "Cannot delete customer with existing invoices. Delete or reassign invoices first.",
+    };
+  }
+
   await prisma.customer.delete({ where: { id } });
   revalidatePath("/customers");
   return { success: true };

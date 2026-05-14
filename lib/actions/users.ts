@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth-utils";
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -23,6 +24,8 @@ export type CreateUserFormData = z.infer<typeof createUserSchema>;
 export type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 export async function getUsers() {
+  await requireRole(["ADMIN"]);
+
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
     select: {
@@ -38,6 +41,8 @@ export async function getUsers() {
 }
 
 export async function createUser(data: CreateUserFormData) {
+  await requireRole(["ADMIN"]);
+
   const parsed = createUserSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
@@ -67,6 +72,8 @@ export async function createUser(data: CreateUserFormData) {
 }
 
 export async function updateUser(id: string, data: UpdateUserFormData) {
+  await requireRole(["ADMIN"]);
+
   const parsed = updateUserSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false as const, errors: parsed.error.flatten().fieldErrors };
@@ -92,6 +99,8 @@ export async function updateUser(id: string, data: UpdateUserFormData) {
 }
 
 export async function changePassword(id: string, newPassword: string) {
+  await requireRole(["ADMIN"]);
+
   if (newPassword.length < 6) {
     return { success: false as const, error: "Password must be at least 6 characters" };
   }
@@ -107,6 +116,8 @@ export async function changePassword(id: string, newPassword: string) {
 }
 
 export async function deleteUser(id: string) {
+  await requireRole(["ADMIN"]);
+
   // Soft delete (set active=false)
   await prisma.user.update({
     where: { id },
