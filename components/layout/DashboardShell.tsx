@@ -14,7 +14,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={user.role} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={user} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">

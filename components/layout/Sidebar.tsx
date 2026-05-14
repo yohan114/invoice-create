@@ -17,21 +17,23 @@ import {
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
+  userRole?: string;
 }
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/customers", label: "Customers", icon: Users },
-  { href: "/jobs", label: "Jobs", icon: Wrench },
-  { href: "/invoices", label: "Invoices", icon: FileText },
-  { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/payments", label: "Payments", icon: CreditCard },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "TECHNICIAN", "CASHIER"] },
+  { href: "/customers", label: "Customers", icon: Users, roles: ["ADMIN", "MANAGER"] },
+  { href: "/jobs", label: "Jobs", icon: Wrench, roles: ["ADMIN", "MANAGER", "TECHNICIAN"] },
+  { href: "/invoices", label: "Invoices", icon: FileText, roles: ["ADMIN", "MANAGER", "CASHIER"] },
+  { href: "/inventory", label: "Inventory", icon: Package, roles: ["ADMIN", "MANAGER"] },
+  { href: "/payments", label: "Payments", icon: CreditCard, roles: ["ADMIN", "MANAGER", "CASHIER"] },
+  { href: "/reports", label: "Reports", icon: BarChart3, roles: ["ADMIN", "MANAGER"] },
+  { href: "/settings", label: "Settings", icon: Settings, roles: ["ADMIN"] },
 ];
 
-export default function Sidebar({ open, onClose }: SidebarProps) {
+export default function Sidebar({ open, onClose, userRole = "ADMIN" }: SidebarProps) {
   const pathname = usePathname();
+  const filteredNavItems = navItems.filter((item) => item.roles.includes(userRole));
 
   return (
     <>
@@ -54,7 +56,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="mt-4 px-3 space-y-1">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
             return (
