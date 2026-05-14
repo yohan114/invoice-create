@@ -27,6 +27,9 @@ async function main() {
       address: "123 Main Street, City",
       phone: "+94 11 234 5678",
       email: "info@workshoppro.com",
+      website: "https://www.workshoppro.com",
+      faxNumber: "+94 11 234 5679",
+      companySubtitle: "Authorized Service & Repair Center",
       invoicePrefix: "INV",
       currency: "Rs.",
       termsAndConditions:
@@ -161,6 +164,51 @@ async function main() {
   });
 
   console.log("Created 2 sample jobs");
+
+  // Create sample equipment linked to customers
+  const equipment1 = await prisma.equipment.create({
+    data: {
+      customerId: customer1.id,
+      name: "Dell Laptop Inspiron 15",
+      modelNumber: "Inspiron 15 5510",
+      serialNumber: "DL-2024-78901",
+      description: "15.6 inch laptop, Intel Core i5, 8GB RAM",
+    },
+  });
+
+  const equipment2 = await prisma.equipment.create({
+    data: {
+      customerId: customer1.id,
+      name: "Canon Printer PIXMA",
+      modelNumber: "PIXMA G3010",
+      serialNumber: "CN-2023-45678",
+      registrationNumber: "REG-PR-001",
+      description: "Ink tank wireless printer",
+    },
+  });
+
+  const equipment3 = await prisma.equipment.create({
+    data: {
+      customerId: customer2.id,
+      name: "HP Printer LaserJet Pro",
+      modelNumber: "LaserJet Pro M404dn",
+      serialNumber: "HP-2024-11223",
+      registrationNumber: "REG-PR-002",
+      description: "Monochrome laser printer with duplex printing",
+    },
+  });
+
+  const equipment4 = await prisma.equipment.create({
+    data: {
+      customerId: customer3.id,
+      name: "Lenovo ThinkPad T480",
+      modelNumber: "ThinkPad T480",
+      serialNumber: "LN-2023-99887",
+      description: "14 inch business laptop, Intel Core i7, 16GB RAM",
+    },
+  });
+
+  console.log("Created 4 sample equipment entries");
 
   console.log("Seeding completed successfully!");
 }
